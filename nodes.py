@@ -4,6 +4,7 @@ import json
 from einops import rearrange
 from contextlib import nullcontext
 
+import execution_context
 from .utils import log, check_diffusers_version, print_memory
 check_diffusers_version()
 from diffusers.schedulers import (
@@ -592,7 +593,10 @@ class CogVideoSampler:
                 "controlnet": ("COGVIDECONTROLNET",),
                 "tora_trajectory": ("TORAFEATURES", ),
                 "fastercache": ("FASTERCACHEARGS", ),
-            }
+            },
+            "hidden": {
+                "context": "EXECUTION_CONTEXT"
+            },
         }
 
     RETURN_TYPES = ("LATENT",)
@@ -601,7 +605,8 @@ class CogVideoSampler:
     CATEGORY = "CogVideoWrapper"
 
     def process(self, model, positive, negative, steps, cfg, seed, scheduler, num_frames, samples=None,
-                denoise_strength=1.0, image_cond_latents=None, context_options=None, controlnet=None, tora_trajectory=None, fastercache=None):
+                denoise_strength=1.0, image_cond_latents=None, context_options=None, controlnet=None, tora_trajectory=None, fastercache=None,
+                context: execution_context.ExecutionContext=None):
         mm.unload_all_models()
         mm.soft_empty_cache()
 

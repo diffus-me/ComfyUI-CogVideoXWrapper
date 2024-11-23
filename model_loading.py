@@ -1,5 +1,7 @@
 import os
 import json
+
+import execution_context
 import folder_paths
 import comfy.model_management as mm
 from typing import Union
@@ -53,17 +55,20 @@ script_directory = os.path.dirname(os.path.abspath(__file__))
 
 class CogVideoLoraSelect:
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(s, context: execution_context.ExecutionContext):
         return {
             "required": {
-               "lora": (folder_paths.get_filename_list("cogvideox_loras"), 
+               "lora": (folder_paths.get_filename_list(context, "cogvideox_loras"),
                 {"tooltip": "LORA models are expected to be in ComfyUI/models/CogVideo/loras with .safetensors extension"}),
                 "strength": ("FLOAT", {"default": 1.0, "min": -10.0, "max": 10.0, "step": 0.0001, "tooltip": "LORA strength, set to 0.0 to unmerge the LORA"}),
             },
             "optional": {
                 "prev_lora":("COGLORA", {"default": None, "tooltip": "For loading multiple LoRAs"}),
                 "fuse_lora": ("BOOLEAN", {"default": False, "tooltip": "Fuse the LoRA weights into the transformer"}),
-            }
+            },
+            "hidden": {
+                "context": "EXECUTION_CONTEXT"
+            },
         }
 
     RETURN_TYPES = ("COGLORA",)
@@ -71,11 +76,11 @@ class CogVideoLoraSelect:
     FUNCTION = "getlorapath"
     CATEGORY = "CogVideoWrapper"
 
-    def getlorapath(self, lora, strength, prev_lora=None, fuse_lora=False):
+    def getlorapath(self, lora, strength, prev_lora=None, fuse_lora=False, context: execution_context.ExecutionContext=None):
         cog_loras_list = []
 
         cog_lora = {
-            "path": folder_paths.get_full_path("cogvideox_loras", lora),
+            "path": folder_paths.get_full_path(context, "cogvideox_loras", lora),
             "strength": strength,
             "name": lora.split(".")[0],
             "fuse_lora": fuse_lora
@@ -89,16 +94,19 @@ class CogVideoLoraSelect:
 
 class CogVideoLoraSelectComfy:
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(s, context: execution_context.ExecutionContext):
         return {
             "required": {
-               "lora": (folder_paths.get_filename_list("loras"), 
+               "lora": (folder_paths.get_filename_list(context, "loras"),
                 {"tooltip": "LORA models are expected to be in ComfyUI/models/CogVideo/loras with .safetensors extension"}),
                 "strength": ("FLOAT", {"default": 1.0, "min": -10.0, "max": 10.0, "step": 0.0001, "tooltip": "LORA strength, set to 0.0 to unmerge the LORA"}),
             },
             "optional": {
                 "prev_lora":("COGLORA", {"default": None, "tooltip": "For loading multiple LoRAs"}),
                 "fuse_lora": ("BOOLEAN", {"default": False, "tooltip": "Fuse the LoRA weights into the transformer"}),
+            },
+            "hidden": {
+                "context": "EXECUTION_CONTEXT"
             }
         }
 
@@ -107,11 +115,11 @@ class CogVideoLoraSelectComfy:
     FUNCTION = "getlorapath"
     CATEGORY = "CogVideoWrapper"
 
-    def getlorapath(self, lora, strength, prev_lora=None, fuse_lora=False):
+    def getlorapath(self, lora, strength, prev_lora=None, fuse_lora=False, context: execution_context.ExecutionContext=None):
         cog_loras_list = []
 
         cog_lora = {
-            "path": folder_paths.get_full_path("loras", lora),
+            "path": folder_paths.get_full_path(context, "loras", lora),
             "strength": strength,
             "name": lora.split(".")[0],
             "fuse_lora": fuse_lora
@@ -162,7 +170,10 @@ class DownloadAndLoadCogVideoModel:
                 "compile_args":("COMPILEARGS", ),
                 "attention_mode": (["sdpa", "sageattn", "fused_sdpa", "fused_sageattn", "comfy"], {"default": "sdpa"}),
                 "load_device": (["main_device", "offload_device"], {"default": "main_device"}),
-            }
+            },
+            "hidden": {
+                "context": "EXECUTION_CONTEXT"
+            },
         }
 
     RETURN_TYPES = ("COGVIDEOMODEL", "VAE",)
@@ -173,7 +184,8 @@ class DownloadAndLoadCogVideoModel:
 
     def loadmodel(self, model, precision, quantization="disabled", compile="disabled", 
                   enable_sequential_cpu_offload=False, block_edit=None, lora=None, compile_args=None, 
-                  attention_mode="sdpa", load_device="main_device"):
+                  attention_mode="sdpa", load_device="main_device",
+                  context: execution_context.ExecutionContext = None):
         
         if "sage" in attention_mode:
             try:
@@ -641,10 +653,10 @@ class DownloadAndLoadCogVideoGGUFModel:
 #region ModelLoader
 class CogVideoXModelLoader:
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(s, context: execution_context.ExecutionContext):
         return {
             "required": {
-                "model": (folder_paths.get_filename_list("diffusion_models"), {"tooltip": "These models are loaded from the 'ComfyUI/models/diffusion_models' -folder",}),
+                "model": (folder_paths.get_filename_list(context, "diffusion_models"), {"tooltip": "These models are loaded from the 'ComfyUI/models/diffusion_models' -folder",}),
             
             "base_precision": (["fp16", "fp32", "bf16"], {"default": "bf16"}),
             "quantization": (['disabled', 'fp8_e4m3fn', 'fp8_e4m3fn_fast', 'torchao_fp8dq', "torchao_fp8dqrow", "torchao_int8dq", "torchao_fp6"], {"default": 'disabled', "tooltip": "optional quantization method"}),
@@ -656,7 +668,10 @@ class CogVideoXModelLoader:
                 "lora": ("COGLORA", {"default": None}),
                 "compile_args":("COMPILEARGS", ),
                 "attention_mode": (["sdpa", "sageattn", "fused_sdpa", "fused_sageattn"], {"default": "sdpa"}),
-            }
+            },
+            "hidden": {
+                "context": "EXECUTION_CONTEXT"
+            },
         }
 
     RETURN_TYPES = ("COGVIDEOMODEL",)
@@ -665,8 +680,9 @@ class CogVideoXModelLoader:
     CATEGORY = "CogVideoWrapper"
 
     def loadmodel(self, model, base_precision, load_device, enable_sequential_cpu_offload, 
-                  block_edit=None, compile_args=None, lora=None, attention_mode="sdpa", quantization="disabled"):
-        
+                  block_edit=None, compile_args=None, lora=None, attention_mode="sdpa", quantization="disabled",
+                  context: execution_context.ExecutionContext=None):
+
         if "sage" in attention_mode:
             try:
                 from sageattention import sageattn
@@ -681,7 +697,7 @@ class CogVideoXModelLoader:
 
         base_dtype = {"fp8_e4m3fn": torch.float8_e4m3fn, "fp8_e4m3fn_fast": torch.float8_e4m3fn, "bf16": torch.bfloat16, "fp16": torch.float16, "fp32": torch.float32}[base_precision]
 
-        model_path = folder_paths.get_full_path_or_raise("diffusion_models", model)
+        model_path = folder_paths.get_full_path_or_raise(context, "diffusion_models", model)
         sd = load_torch_file(model_path, device=transformer_load_device)
 
         model_type = ""
@@ -884,17 +900,20 @@ class CogVideoXModelLoader:
 
 class CogVideoXVAELoader:
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(s, context: execution_context.ExecutionContext):
         return {
             "required": {
-                "model_name": (folder_paths.get_filename_list("vae"), {"tooltip": "These models are loaded from 'ComfyUI/models/vae'"}),
+                "model_name": (folder_paths.get_filename_list(context, "vae"), {"tooltip": "These models are loaded from 'ComfyUI/models/vae'"}),
             },
             "optional": {
                 "precision": (["fp16", "fp32", "bf16"],
                     {"default": "bf16"}
                 ),
                 "compile_args":("COMPILEARGS", ),
-            }
+            },
+            "hidden": {
+                "context": "EXECUTION_CONTEXT"
+            },
         }
 
     RETURN_TYPES = ("VAE",)
@@ -903,14 +922,14 @@ class CogVideoXVAELoader:
     CATEGORY = "CogVideoWrapper"
     DESCRIPTION = "Loads CogVideoX VAE model from 'ComfyUI/models/vae'"
 
-    def loadmodel(self, model_name, precision, compile_args=None):
+    def loadmodel(self, model_name, precision, compile_args=None, context: execution_context.ExecutionContext=None):
         device = mm.get_torch_device()
         offload_device = mm.unet_offload_device()
 
         dtype = {"bf16": torch.bfloat16, "fp16": torch.float16, "fp32": torch.float32}[precision]
         with open(os.path.join(script_directory, 'configs', 'vae_config.json')) as f:
             vae_config = json.load(f)
-        model_path = folder_paths.get_full_path("vae", model_name)
+        model_path = folder_paths.get_full_path(context, "vae", model_name)
         vae_sd = load_torch_file(model_path)
 
         vae = AutoencoderKLCogVideoX.from_config(vae_config).to(dtype).to(offload_device)
@@ -934,6 +953,9 @@ class DownloadAndLoadToraModel:
                     ],
                 ),
             },
+            "hidden": {
+                "context": "EXECUTION_CONTEXT"
+            },
         }
 
     RETURN_TYPES = ("TORAMODEL",)
@@ -942,7 +964,7 @@ class DownloadAndLoadToraModel:
     CATEGORY = "CogVideoWrapper"
     DESCRIPTION = "Downloads and loads the the Tora model from Huggingface to 'ComfyUI/models/CogVideo/CogVideoX-5b-Tora'"
 
-    def loadmodel(self, model):
+    def loadmodel(self, model, context: execution_context.ExecutionContext):
         device = mm.get_torch_device()
         offload_device = mm.unet_offload_device()
         mm.soft_empty_cache()
